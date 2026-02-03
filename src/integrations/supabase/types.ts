@@ -14,6 +14,113 @@ export type Database = {
   }
   public: {
     Tables: {
+      conversations: {
+        Row: {
+          created_at: string
+          id: string
+          platform: string
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          platform: string
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          platform?: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          platform_message_id: string | null
+          role: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          platform_message_id?: string | null
+          role: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          platform_message_id?: string | null
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messaging_connections: {
+        Row: {
+          chat_id: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          is_verified: boolean
+          phone_number: string | null
+          platform: string
+          platform_user_id: string
+          updated_at: string
+          user_id: string
+          verification_code: string | null
+          verification_expires_at: string | null
+        }
+        Insert: {
+          chat_id?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          is_verified?: boolean
+          phone_number?: string | null
+          platform: string
+          platform_user_id: string
+          updated_at?: string
+          user_id: string
+          verification_code?: string | null
+          verification_expires_at?: string | null
+        }
+        Update: {
+          chat_id?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          is_verified?: boolean
+          phone_number?: string | null
+          platform?: string
+          platform_user_id?: string
+          updated_at?: string
+          user_id?: string
+          verification_code?: string | null
+          verification_expires_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
