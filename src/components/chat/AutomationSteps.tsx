@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 export interface AutomationStep {
   action: string;
   target: string;
+  value?: string;
   status: "pending" | "running" | "complete" | "waiting";
 }
 
