@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Bot, User, CheckCircle, AlertCircle, Loader2, Play } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { AutomationSteps, parseAutomationBlock, removeAutomationBlock, AutomationData } from "./AutomationSteps";
+import { CartSummary, parseCartSummary, CartSummaryData } from "./CartSummary";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -17,28 +18,42 @@ interface ChatMessageProps {
   message: Message;
   index: number;
   onStartAutomation?: (automation: AutomationData) => void;
+  onConfirmCart?: () => void;
+  onModifyCart?: () => void;
 }
 
-export function ChatMessage({ message, index, onStartAutomation }: ChatMessageProps) {
+export function ChatMessage({ message, index, onStartAutomation, onConfirmCart, onModifyCart }: ChatMessageProps) {
   const isUser = message.role === "user";
   const [automationStarted, setAutomationStarted] = useState(false);
   const [automationData, setAutomationData] = useState<AutomationData | null>(null);
+  const [cartData, setCartData] = useState<CartSummaryData | null>(null);
   const [displayContent, setDisplayContent] = useState(message.content);
   const [currentStepIndex, setCurrentStepIndex] = useState(-1);
+  const [isAwaitingConfirmation, setIsAwaitingConfirmation] = useState(false);
 
-  // Parse automation data and simulate step execution
+  // Parse automation data and cart summary
   useEffect(() => {
-    const parsed = parseAutomationBlock(message.content);
-    if (parsed) {
-      setAutomationData(parsed);
-      setDisplayContent(removeAutomationBlock(message.content));
-      
-      // Simulate step execution when message is complete
-      if (message.status === "complete") {
-        simulateStepExecution(parsed);
-      }
-    } else {
-      setDisplayContent(message.content);
+    const parsedAutomation = parseAutomationBlock(message.content);
+    const parsedCart = parseCartSummary(message.content);
+    
+    let cleanContent = message.content;
+    
+    if (parsedAutomation) {
+      setAutomationData(parsedAutomation);
+      cleanContent = removeAutomationBlock(cleanContent);
+    }
+    
+    if (parsedCart) {
+      setCartData(parsedCart);
+      // Remove cart_summary block from display
+      cleanContent = cleanContent.replace(/```cart_summary[\s\S]*?```/g, '').trim();
+    }
+    
+    setDisplayContent(cleanContent);
+    
+    // Simulate step execution when message is complete
+    if (parsedAutomation && message.status === "complete") {
+      simulateStepExecution(parsedAutomation);
     }
   }, [message.content, message.status]);
 
@@ -56,17 +71,22 @@ export function ChatMessage({ message, index, onStartAutomation }: ChatMessagePr
         for (let i = 0; i < stepIndex; i++) {
           newSteps[i] = { ...newSteps[i], status: "complete" };
         }
-        // Mark current step as running (or waiting for handoff)
+        // Mark current step as running (or waiting for handoff/confirmation)
         const currentAction = newSteps[stepIndex].action;
+        const needsWait = currentAction === "handoff" || currentAction === "await_confirmation";
         newSteps[stepIndex] = { 
           ...newSteps[stepIndex], 
-          status: currentAction === "handoff" ? "waiting" : "running" 
+          status: needsWait ? "waiting" : "running" 
         };
         return { ...prev, steps: newSteps };
       });
 
-      // Don't auto-advance for handoff steps
-      if (data.steps[stepIndex].action === "handoff") {
+      // Don't auto-advance for handoff or await_confirmation steps
+      const currentAction = data.steps[stepIndex].action;
+      if (currentAction === "handoff" || currentAction === "await_confirmation") {
+        if (currentAction === "await_confirmation") {
+          setIsAwaitingConfirmation(true);
+        }
         // Mark remaining steps and stop
         setAutomationData(prev => {
           if (!prev) return prev;
@@ -102,6 +122,66 @@ export function ChatMessage({ message, index, onStartAutomation }: ChatMessagePr
       onStartAutomation(automationData);
     }
   }, [automationData, onStartAutomation, automationStarted]);
+
+  const handleConfirmCart = useCallback(() => {
+    setIsAwaitingConfirmation(false);
+    // Continue automation from await_confirmation step
+    if (automationData) {
+      const confirmIdx = automationData.steps.findIndex(s => s.action === "await_confirmation");
+      if (confirmIdx !== -1) {
+        setAutomationData(prev => {
+          if (!prev) return prev;
+          const newSteps = [...prev.steps];
+          newSteps[confirmIdx] = { ...newSteps[confirmIdx], status: "complete" };
+          return { ...prev, steps: newSteps };
+        });
+        // Simulate remaining steps
+        let stepIndex = confirmIdx + 1;
+        const runRemainingSteps = () => {
+          if (stepIndex >= automationData.steps.length) return;
+          
+          setAutomationData(prev => {
+            if (!prev) return prev;
+            const newSteps = [...prev.steps];
+            const currentAction = newSteps[stepIndex].action;
+            newSteps[stepIndex] = { 
+              ...newSteps[stepIndex], 
+              status: currentAction === "handoff" ? "waiting" : "running" 
+            };
+            return { ...prev, steps: newSteps };
+          });
+          
+          if (automationData.steps[stepIndex].action === "handoff") {
+            setAutomationData(prev => {
+              if (!prev) return prev;
+              const newSteps = [...prev.steps];
+              newSteps[stepIndex] = { ...newSteps[stepIndex], status: "waiting" };
+              return { ...prev, steps: newSteps };
+            });
+            return;
+          }
+          
+          setTimeout(() => {
+            setAutomationData(prev => {
+              if (!prev) return prev;
+              const newSteps = [...prev.steps];
+              newSteps[stepIndex] = { ...newSteps[stepIndex], status: "complete" };
+              return { ...prev, steps: newSteps };
+            });
+            stepIndex++;
+            runRemainingSteps();
+          }, 1000 + Math.random() * 1000);
+        };
+        
+        setTimeout(runRemainingSteps, 500);
+      }
+    }
+    onConfirmCart?.();
+  }, [automationData, onConfirmCart]);
+
+  const handleModifyCart = useCallback(() => {
+    onModifyCart?.();
+  }, [onModifyCart]);
 
   return (
     <motion.div
@@ -147,6 +227,18 @@ export function ChatMessage({ message, index, onStartAutomation }: ChatMessagePr
               </ReactMarkdown>
             </div>
 
+            {/* Cart Summary Display */}
+            {cartData && (
+              <div className="mt-4">
+                <CartSummary
+                  cart={cartData}
+                  onConfirm={handleConfirmCart}
+                  onModify={handleModifyCart}
+                  isWaiting={isAwaitingConfirmation}
+                />
+              </div>
+            )}
+
             {/* Automation Steps Display */}
             {automationData && (
               <>
@@ -179,16 +271,22 @@ export function ChatMessage({ message, index, onStartAutomation }: ChatMessagePr
         {/* Status indicator for assistant messages */}
         {!isUser && message.status && message.status !== "thinking" && (
           <div className="flex items-center gap-1.5 mt-3 pt-2 border-t border-border/30">
-            {message.status === "complete" && !automationData && (
+            {message.status === "complete" && !automationData && !isAwaitingConfirmation && (
               <>
                 <CheckCircle className="w-3.5 h-3.5 text-green-400" />
                 <span className="text-xs text-muted-foreground">Task completed</span>
               </>
             )}
-            {message.status === "complete" && automationData && (
+            {message.status === "complete" && automationData && !isAwaitingConfirmation && (
               <>
                 <CheckCircle className="w-3.5 h-3.5 text-green-400" />
                 <span className="text-xs text-muted-foreground">Automation ready - browser opened</span>
+              </>
+            )}
+            {isAwaitingConfirmation && (
+              <>
+                <AlertCircle className="w-3.5 h-3.5 text-yellow-400 animate-pulse" />
+                <span className="text-xs text-yellow-400">Waiting for your confirmation to proceed</span>
               </>
             )}
             {message.status === "error" && (

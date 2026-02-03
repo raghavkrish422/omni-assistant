@@ -51,6 +51,16 @@ export default function Chat() {
     }
   }, [activeAutomation]);
 
+  // Handle cart confirmation - send confirmation message to continue automation
+  const handleConfirmCart = useCallback(() => {
+    sendMessage("Looks good, proceed to checkout");
+  }, [sendMessage]);
+
+  // Handle cart modification request
+  const handleModifyCart = useCallback(() => {
+    sendMessage("I'd like to modify my cart");
+  }, [sendMessage]);
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Live Browser Panel - Now a floating card */}
@@ -158,6 +168,8 @@ export default function Chat() {
                 message={message} 
                 index={index}
                 onStartAutomation={handleStartAutomation}
+                onConfirmCart={handleConfirmCart}
+                onModifyCart={handleModifyCart}
               />
             ))
           )}

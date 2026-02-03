@@ -42,6 +42,8 @@ const actionIcons: Record<string, React.ComponentType<{ className?: string }>> =
   fill: FileEdit,
   click: MousePointer,
   handoff: Hand,
+  review_cart: ShoppingCart,
+  await_confirmation: Circle,
 };
 
 const serviceColors: Record<string, string> = {
@@ -147,7 +149,12 @@ export function AutomationSteps({ data, onOpenBrowser }: AutomationStepsProps) {
                 )}
                 {step.status === "waiting" && step.action === "handoff" && (
                   <p className="text-xs text-yellow-400 mt-1">
-                    Waiting for you to complete this step
+                    Waiting for you to complete login/payment
+                  </p>
+                )}
+                {step.status === "waiting" && step.action === "await_confirmation" && (
+                  <p className="text-xs text-yellow-400 mt-1">
+                    Please review your cart and confirm to proceed
                   </p>
                 )}
               </div>
