@@ -83,10 +83,10 @@ export default function Chat() {
 
               <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg mx-auto">
                 {[
+                  "Order groceries from Walmart - show me live",
                   "Book a flight from Boston to San Francisco",
-                  "Order groceries for dinner tonight",
-                  "Schedule a meeting with my team",
-                  "Find the best restaurant nearby",
+                  "Order dinner from DoorDash",
+                  "Find the cheapest option for 1lb potatoes",
                 ].map((suggestion, index) => (
                   <motion.button
                     key={suggestion}
