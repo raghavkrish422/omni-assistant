@@ -1,8 +1,9 @@
 import { motion } from "framer-motion";
-import { Bot, User, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { Bot, User, CheckCircle, AlertCircle, Loader2, Play } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { AutomationSteps, parseAutomationBlock, removeAutomationBlock, AutomationData } from "./AutomationSteps";
 import { useCallback, useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 
 export interface Message {
   id: string;
@@ -15,10 +16,12 @@ export interface Message {
 interface ChatMessageProps {
   message: Message;
   index: number;
+  onStartAutomation?: (automation: AutomationData) => void;
 }
 
-export function ChatMessage({ message, index }: ChatMessageProps) {
+export function ChatMessage({ message, index, onStartAutomation }: ChatMessageProps) {
   const isUser = message.role === "user";
+  const [automationStarted, setAutomationStarted] = useState(false);
   const [automationData, setAutomationData] = useState<AutomationData | null>(null);
   const [displayContent, setDisplayContent] = useState(message.content);
   const [currentStepIndex, setCurrentStepIndex] = useState(-1);
@@ -93,6 +96,13 @@ export function ChatMessage({ message, index }: ChatMessageProps) {
     }
   }, [automationData?.url]);
 
+  const handleStartLiveAutomation = useCallback(() => {
+    if (automationData && onStartAutomation && !automationStarted) {
+      setAutomationStarted(true);
+      onStartAutomation(automationData);
+    }
+  }, [automationData, onStartAutomation, automationStarted]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -139,10 +149,29 @@ export function ChatMessage({ message, index }: ChatMessageProps) {
 
             {/* Automation Steps Display */}
             {automationData && (
-              <AutomationSteps 
-                data={automationData} 
-                onOpenBrowser={handleOpenBrowser}
-              />
+              <>
+                {/* Start Live Automation Button */}
+                {onStartAutomation && !automationStarted && (
+                  <div className="mt-4 mb-2">
+                    <Button
+                      onClick={handleStartLiveAutomation}
+                      className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground font-medium"
+                      size="lg"
+                    >
+                      <Play className="w-5 h-5 mr-2" />
+                      Start Live Browser Automation
+                    </Button>
+                    <p className="text-xs text-muted-foreground text-center mt-2">
+                      Watch as Axiom automates this task in real-time
+                    </p>
+                  </div>
+                )}
+                
+                <AutomationSteps 
+                  data={automationData} 
+                  onOpenBrowser={handleOpenBrowser}
+                />
+              </>
             )}
           </>
         )}
