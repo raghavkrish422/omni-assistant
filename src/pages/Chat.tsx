@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { ArrowLeft, Trash2, Shield } from "lucide-react";
 import { ChatMessage } from "@/components/chat/ChatMessage";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { useChat } from "@/hooks/useChat";
@@ -9,11 +9,28 @@ import { useBrowserSession } from "@/hooks/useBrowserSession";
 import { LiveBrowser } from "@/components/chat/LiveBrowser";
 import { AutomationData } from "@/components/chat/AutomationSteps";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
+import { PermissionsDialog } from "@/components/permissions/PermissionsDialog";
+import { WelcomeGreeting } from "@/components/assistant/WelcomeGreeting";
+import { usePermissions } from "@/hooks/usePermissions";
 
 export default function Chat() {
   const navigate = useNavigate();
+  const { profile } = useAuth();
   const { messages, isLoading, sendMessage, clearMessages } = useChat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Permissions state
+  const [showPermissions, setShowPermissions] = useState(false);
+  const { hasShownDialog } = usePermissions();
+  
+  // Show permissions dialog on first visit
+  useEffect(() => {
+    if (!hasShownDialog && profile) {
+      const timer = setTimeout(() => setShowPermissions(true), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [hasShownDialog, profile]);
   
   // Live browser state
   const [activeAutomation, setActiveAutomation] = useState<AutomationData | null>(null);
@@ -28,6 +45,8 @@ export default function Chat() {
     startAutomation,
     closeSession,
   } = useBrowserSession();
+
+  const userName = profile?.first_name || "there";
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -63,6 +82,13 @@ export default function Chat() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* Permissions Dialog */}
+      <PermissionsDialog
+        isOpen={showPermissions}
+        onClose={() => setShowPermissions(false)}
+        userName={userName}
+      />
+
       {/* Live Browser Panel - Now a floating card */}
       <AnimatePresence>
         {showLiveBrowser && activeAutomation && (
@@ -95,56 +121,47 @@ export default function Chat() {
           </Button>
           <div>
             <h1 className="text-lg font-semibold text-foreground">Chat</h1>
-            <p className="text-xs text-muted-foreground">Type your request below</p>
+            <p className="text-xs text-muted-foreground">Hi {userName}! How can I help?</p>
           </div>
         </div>
 
-        {messages.length > 0 && (
+        <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="icon"
-            onClick={clearMessages}
+            onClick={() => setShowPermissions(true)}
             className="rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground"
           >
-            <Trash2 className="w-5 h-5" />
+            <Shield className="w-5 h-5" />
           </Button>
-        )}
+          {messages.length > 0 && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={clearMessages}
+              className="rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground"
+            >
+              <Trash2 className="w-5 h-5" />
+            </Button>
+          )}
+        </div>
       </motion.header>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-6">
         <div className="max-w-3xl mx-auto space-y-6">
           {messages.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-center py-20"
-            >
-              <div className="w-16 h-16 rounded-2xl bg-gradient-primary flex items-center justify-center mx-auto mb-6 shadow-lg">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  className="w-8 h-8 text-primary-foreground"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                >
-                  <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                  <path d="M2 17l10 5 10-5" />
-                  <path d="M2 12l10 5 10-5" />
-                </svg>
-              </div>
-              <h2 className="text-2xl font-semibold text-foreground mb-2">
-                How can I help you today?
-              </h2>
-              <p className="text-muted-foreground max-w-md mx-auto">
-                Tell me what you'd like to accomplish. I'll open a live browser and 
-                automate the task for you - you just complete login and payment.
-              </p>
-
-              <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg mx-auto">
+            <>
+              <WelcomeGreeting 
+                userName={userName} 
+                onManagePermissions={() => setShowPermissions(true)}
+                variant="chat"
+              />
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg mx-auto">
                 {[
                   "Order groceries from Walmart - show me live",
-                  "Book a flight from Boston to San Francisco",
+                  "Record this meeting and give me notes",
                   "Order dinner from DoorDash",
                   "Find the cheapest option for 1lb potatoes",
                 ].map((suggestion, index) => (
@@ -160,7 +177,7 @@ export default function Chat() {
                   </motion.button>
                 ))}
               </div>
-            </motion.div>
+            </>
           ) : (
             messages.map((message, index) => (
               <ChatMessage 
