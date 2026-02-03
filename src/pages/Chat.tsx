@@ -1,23 +1,82 @@
-import { useRef, useEffect } from "react";
-import { motion } from "framer-motion";
+import { useRef, useEffect, useState, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { ChatMessage } from "@/components/chat/ChatMessage";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { useChat } from "@/hooks/useChat";
+import { useBrowserSession } from "@/hooks/useBrowserSession";
+import { LiveBrowser } from "@/components/chat/LiveBrowser";
+import { AutomationData } from "@/components/chat/AutomationSteps";
 import { Button } from "@/components/ui/button";
 
 export default function Chat() {
   const navigate = useNavigate();
   const { messages, isLoading, sendMessage, clearMessages } = useChat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Live browser state
+  const [activeAutomation, setActiveAutomation] = useState<AutomationData | null>(null);
+  const [showLiveBrowser, setShowLiveBrowser] = useState(false);
+  
+  const {
+    session,
+    isLoading: isBrowserLoading,
+    error: browserError,
+    isFallback,
+    currentStepIndex,
+    createSession,
+    startAutomation,
+    closeSession,
+  } = useBrowserSession();
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Handle when automation is triggered from a message
+  const handleStartAutomation = useCallback(async (automation: AutomationData) => {
+    setActiveAutomation(automation);
+    setShowLiveBrowser(true);
+    await startAutomation(automation);
+  }, [startAutomation]);
+
+  const handleCloseBrowser = useCallback(() => {
+    setShowLiveBrowser(false);
+    closeSession();
+  }, [closeSession]);
+
+  const handleRetry = useCallback(async () => {
+    if (activeAutomation) {
+      await startAutomation(activeAutomation);
+    }
+  }, [activeAutomation, startAutomation]);
+
+  const handleOpenExternal = useCallback(() => {
+    if (activeAutomation?.url) {
+      window.open(activeAutomation.url, "_blank", "noopener,noreferrer");
+    }
+  }, [activeAutomation]);
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* Live Browser Overlay */}
+      <AnimatePresence>
+        {showLiveBrowser && (
+          <LiveBrowser
+            session={session}
+            automation={activeAutomation}
+            currentStepIndex={currentStepIndex}
+            isLoading={isBrowserLoading}
+            error={browserError}
+            isFallback={isFallback}
+            onClose={handleCloseBrowser}
+            onRetry={handleRetry}
+            onOpenExternal={handleOpenExternal}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <motion.header
         initial={{ opacity: 0, y: -20 }}
@@ -77,8 +136,8 @@ export default function Chat() {
                 How can I help you today?
               </h2>
               <p className="text-muted-foreground max-w-md mx-auto">
-                Tell me what you'd like to accomplish. I'll ask follow-up questions if needed, 
-                plan the task, and execute it for you.
+                Tell me what you'd like to accomplish. I'll open a live browser and 
+                automate the task for you - you just complete login and payment.
               </p>
 
               <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg mx-auto">
@@ -103,7 +162,12 @@ export default function Chat() {
             </motion.div>
           ) : (
             messages.map((message, index) => (
-              <ChatMessage key={message.id} message={message} index={index} />
+              <ChatMessage 
+                key={message.id} 
+                message={message} 
+                index={index}
+                onStartAutomation={handleStartAutomation}
+              />
             ))
           )}
           <div ref={messagesEndRef} />
