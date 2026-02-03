@@ -23,9 +23,8 @@ export default function Chat() {
     session,
     isLoading: isBrowserLoading,
     error: browserError,
-    isFallback,
     currentStepIndex,
-    createSession,
+    stepStatuses,
     startAutomation,
     closeSession,
   } = useBrowserSession();
@@ -46,12 +45,6 @@ export default function Chat() {
     closeSession();
   }, [closeSession]);
 
-  const handleRetry = useCallback(async () => {
-    if (activeAutomation) {
-      await startAutomation(activeAutomation);
-    }
-  }, [activeAutomation, startAutomation]);
-
   const handleOpenExternal = useCallback(() => {
     if (activeAutomation?.url) {
       window.open(activeAutomation.url, "_blank", "noopener,noreferrer");
@@ -60,18 +53,16 @@ export default function Chat() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Live Browser Overlay */}
+      {/* Live Browser Panel - Now a floating card */}
       <AnimatePresence>
-        {showLiveBrowser && (
+        {showLiveBrowser && activeAutomation && (
           <LiveBrowser
-            session={session}
             automation={activeAutomation}
             currentStepIndex={currentStepIndex}
+            stepStatuses={stepStatuses}
             isLoading={isBrowserLoading}
             error={browserError}
-            isFallback={isFallback}
             onClose={handleCloseBrowser}
-            onRetry={handleRetry}
             onOpenExternal={handleOpenExternal}
           />
         )}

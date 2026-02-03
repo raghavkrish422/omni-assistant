@@ -1,19 +1,18 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AutomationData, AutomationStep } from "@/components/chat/AutomationSteps";
 
 interface BrowserSession {
   sessionId: string;
-  debugUrl: string;
-  liveUrl: string;
+  popupWindow: Window | null;
 }
 
 interface UseBrowserSessionReturn {
   session: BrowserSession | null;
   isLoading: boolean;
   error: string | null;
-  isFallback: boolean;
   currentStepIndex: number;
+  stepStatuses: Array<"pending" | "running" | "complete" | "waiting">;
   createSession: () => Promise<BrowserSession | null>;
   startAutomation: (automation: AutomationData) => Promise<void>;
   closeSession: () => Promise<void>;
@@ -23,13 +22,13 @@ export function useBrowserSession(): UseBrowserSessionReturn {
   const [session, setSession] = useState<BrowserSession | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isFallback, setIsFallback] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(-1);
+  const [stepStatuses, setStepStatuses] = useState<Array<"pending" | "running" | "complete" | "waiting">>([]);
+  const popupRef = useRef<Window | null>(null);
 
   const createSession = useCallback(async (): Promise<BrowserSession | null> => {
     setIsLoading(true);
     setError(null);
-    setIsFallback(false);
 
     try {
       const { data, error: fnError } = await supabase.functions.invoke("browser-automation", {
@@ -40,22 +39,19 @@ export function useBrowserSession(): UseBrowserSessionReturn {
         throw new Error(fnError.message);
       }
 
-      if (data.fallback) {
-        setIsFallback(true);
-        setError(data.error);
-        return null;
-      }
-
       if (data.success && data.session) {
-        setSession(data.session);
-        return data.session;
+        const newSession: BrowserSession = {
+          sessionId: data.session.sessionId,
+          popupWindow: null,
+        };
+        setSession(newSession);
+        return newSession;
       }
 
       throw new Error("Failed to create browser session");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to create session";
       setError(message);
-      setIsFallback(true);
       return null;
     } finally {
       setIsLoading(false);
@@ -63,74 +59,119 @@ export function useBrowserSession(): UseBrowserSessionReturn {
   }, []);
 
   const startAutomation = useCallback(async (automation: AutomationData) => {
-    // First, ensure we have a session
-    let currentSession = session;
-    if (!currentSession) {
-      currentSession = await createSession();
-    }
-
-    if (!currentSession) {
-      // Fallback mode - open URL in new tab
-      window.open(automation.url, "_blank", "noopener,noreferrer");
-      return;
-    }
-
+    setIsLoading(true);
+    setError(null);
+    
+    // Initialize step statuses
+    const initialStatuses: Array<"pending" | "running" | "complete" | "waiting"> = 
+      automation.steps.map(() => "pending");
+    setStepStatuses(initialStatuses);
     setCurrentStepIndex(0);
 
-    // Navigate to the initial URL
     try {
-      await supabase.functions.invoke("browser-automation", {
-        body: {
-          action: "navigate",
-          sessionId: currentSession.sessionId,
-          url: automation.url,
-        },
-      });
+      // Create session if needed
+      let currentSession = session;
+      if (!currentSession) {
+        currentSession = await createSession();
+      }
 
-      // Simulate step execution
+      // Open the target URL in a popup window
+      const popupWidth = 1200;
+      const popupHeight = 800;
+      const left = (window.screen.width - popupWidth) / 2;
+      const top = (window.screen.height - popupHeight) / 2;
+      
+      const popup = window.open(
+        automation.url,
+        `axiom_automation_${Date.now()}`,
+        `width=${popupWidth},height=${popupHeight},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
+      );
+      
+      popupRef.current = popup;
+      
+      if (currentSession) {
+        setSession({
+          ...currentSession,
+          popupWindow: popup,
+        });
+      }
+
+      // Simulate step execution with timing
       for (let i = 0; i < automation.steps.length; i++) {
-        setCurrentStepIndex(i);
-        
         const step = automation.steps[i];
         
-        // Handoff steps require user action
+        // Update current step
+        setCurrentStepIndex(i);
+        setStepStatuses(prev => {
+          const newStatuses = [...prev];
+          // Mark previous steps as complete
+          for (let j = 0; j < i; j++) {
+            newStatuses[j] = "complete";
+          }
+          // Mark current step based on action type
+          newStatuses[i] = step.action === "handoff" ? "waiting" : "running";
+          return newStatuses;
+        });
+
+        // Handoff steps require user action - stop automation here
         if (step.action === "handoff") {
           break;
         }
 
-        // Execute the step (simulated delay for now)
-        await new Promise((resolve) => setTimeout(resolve, 1500 + Math.random() * 1000));
+        // Simulate step execution time (1.5-3 seconds per step)
+        await new Promise((resolve) => setTimeout(resolve, 1500 + Math.random() * 1500));
       }
+
+      // Mark final completed steps
+      setStepStatuses(prev => {
+        const newStatuses = [...prev];
+        for (let i = 0; i < newStatuses.length; i++) {
+          if (newStatuses[i] === "running") {
+            newStatuses[i] = "complete";
+          }
+        }
+        return newStatuses;
+      });
+
     } catch (err) {
       console.error("Automation error:", err);
-      setError("Automation step failed");
+      setError("Automation failed");
+    } finally {
+      setIsLoading(false);
     }
   }, [session, createSession]);
 
   const closeSession = useCallback(async () => {
-    if (!session) return;
-
-    try {
-      await supabase.functions.invoke("browser-automation", {
-        body: {
-          action: "close",
-          sessionId: session.sessionId,
-        },
-      });
-    } catch (err) {
-      console.error("Failed to close session:", err);
-    } finally {
-      setSession(null);
-      setCurrentStepIndex(-1);
+    // Close popup if still open
+    if (popupRef.current && !popupRef.current.closed) {
+      popupRef.current.close();
     }
+    popupRef.current = null;
+
+    if (session) {
+      try {
+        await supabase.functions.invoke("browser-automation", {
+          body: {
+            action: "close",
+            sessionId: session.sessionId,
+          },
+        });
+      } catch (err) {
+        console.error("Failed to close session:", err);
+      }
+    }
+
+    setSession(null);
+    setCurrentStepIndex(-1);
+    setStepStatuses([]);
   }, [session]);
 
   return {
     session,
     isLoading,
     error,
-    isFallback,
     currentStepIndex,
+    stepStatuses,
     createSession,
     startAutomation,
     closeSession,
