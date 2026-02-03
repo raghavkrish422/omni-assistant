@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { PWAInstallPrompt } from "@/components/pwa/PWAInstallPrompt";
 import Home from "./pages/Home";
 import Chat from "./pages/Chat";
 import Voice from "./pages/Voice";
@@ -50,6 +51,7 @@ const App = () => (
             />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <PWAInstallPrompt />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
