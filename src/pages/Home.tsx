@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { MessageSquare, Mic, LogOut } from "lucide-react";
+import { MessageSquare, Mic, Settings } from "lucide-react";
 import { ModeCard } from "@/components/ui/ModeCard";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,12 +8,7 @@ import AxiomLogo from "@/components/brand/AxiomLogo";
 
 export default function Home() {
   const navigate = useNavigate();
-  const { profile, signOut } = useAuth();
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate("/login");
-  };
+  const { profile } = useAuth();
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 relative overflow-hidden">
@@ -23,7 +18,7 @@ export default function Home() {
         <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-primary/10 rounded-full blur-3xl" />
       </div>
 
-      {/* User info & sign out */}
+      {/* User info & settings */}
       <div className="absolute top-6 right-6 flex items-center gap-4 z-20">
         {profile && (
           <span className="text-sm text-muted-foreground">
@@ -32,12 +27,11 @@ export default function Home() {
         )}
         <Button
           variant="ghost"
-          size="sm"
-          onClick={handleSignOut}
+          size="icon"
+          onClick={() => navigate("/settings")}
           className="text-muted-foreground hover:text-foreground"
         >
-          <LogOut size={18} className="mr-2" />
-          Sign out
+          <Settings size={20} />
         </Button>
       </div>
 

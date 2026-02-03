@@ -9,6 +9,7 @@ import { PWAInstallPrompt } from "@/components/pwa/PWAInstallPrompt";
 import Home from "./pages/Home";
 import Chat from "./pages/Chat";
 import Voice from "./pages/Voice";
+import Settings from "./pages/Settings";
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
 import NotFound from "./pages/NotFound";
@@ -46,6 +47,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Voice />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <Settings />
                 </ProtectedRoute>
               }
             />
