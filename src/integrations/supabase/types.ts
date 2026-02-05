@@ -154,6 +154,83 @@ export type Database = {
         }
         Relationships: []
       }
+      task_executions: {
+        Row: {
+          completed_at: string | null
+          confirmed_at: string | null
+          conversation_id: string | null
+          created_at: string
+          id: string
+          requires_confirmation: boolean | null
+          status: string
+          task_input: Json
+          task_output: Json | null
+          task_type: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          confirmed_at?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          requires_confirmation?: boolean | null
+          status?: string
+          task_input: Json
+          task_output?: Json | null
+          task_type: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          confirmed_at?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          requires_confirmation?: boolean | null
+          status?: string
+          task_input?: Json
+          task_output?: Json | null
+          task_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_executions_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_preferences: {
+        Row: {
+          created_at: string
+          id: string
+          preference_key: string
+          preference_value: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          preference_key: string
+          preference_value: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          preference_key?: string
+          preference_value?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
