@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { Message } from "@/components/chat/ChatMessage";
+import { supabase } from "@/integrations/supabase/client";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-assistant`;
 
@@ -29,11 +30,15 @@ export function useChat() {
     setMessages(prev => [...prev, thinkingMessage]);
 
     try {
+      // Get current session token for authenticated requests
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
       const response = await fetch(CHAT_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           messages: [...messages, userMessage].map(m => ({
