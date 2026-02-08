@@ -1,6 +1,108 @@
 // Tool Registry — defines all available tools for the AI agent
 
 export const TOOL_DEFINITIONS = [
+  // ─── Pica Integration Tools ───────────────────────────────────
+  {
+    type: "function",
+    function: {
+      name: "pica_list_connections",
+      description:
+        "List all connected third-party platforms (Gmail, Calendly, Slack, Canva, etc.). Call this first to see what integrations the user has available.",
+      parameters: {
+        type: "object",
+        properties: {},
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "pica_search_actions",
+      description:
+        "Search for available API actions on a connected platform. Call this after listing connections to discover what you can do (e.g., read emails, create events, send messages).",
+      parameters: {
+        type: "object",
+        properties: {
+          platform: {
+            type: "string",
+            description: "Platform name in kebab-case (e.g. 'gmail', 'google-calendar', 'slack', 'calendly')",
+          },
+          query: {
+            type: "string",
+            description: "Optional search query to filter actions by title (e.g. 'send email', 'list events')",
+          },
+        },
+        required: ["platform"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "pica_get_action_knowledge",
+      description:
+        "Get detailed API documentation for a specific action, including required parameters, headers, and request/response format. ALWAYS call this before executing an action.",
+      parameters: {
+        type: "object",
+        properties: {
+          action_id: {
+            type: "string",
+            description: "The action ID from the search results",
+          },
+        },
+        required: ["action_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "pica_execute_action",
+      description:
+        "Execute an action on a connected platform via the Pica Passthrough API. REQUIRED WORKFLOW: First call pica_list_connections, then pica_search_actions, then pica_get_action_knowledge, and finally this tool.",
+      parameters: {
+        type: "object",
+        properties: {
+          connection_key: {
+            type: "string",
+            description: "The connection key for the specific platform (from pica_list_connections)",
+          },
+          method: {
+            type: "string",
+            enum: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+            description: "HTTP method for the API call",
+          },
+          path: {
+            type: "string",
+            description: "API endpoint path (from action knowledge), e.g. '/gmail/v1/users/me/messages'",
+          },
+          action_id: {
+            type: "string",
+            description: "The action ID (from search results)",
+          },
+          platform: {
+            type: "string",
+            description: "Platform name",
+          },
+          headers: {
+            type: "object",
+            description: "Additional headers if needed",
+          },
+          query_params: {
+            type: "object",
+            description: "Query parameters as key-value pairs",
+          },
+          body: {
+            type: "object",
+            description: "Request body for POST/PUT/PATCH requests",
+          },
+        },
+        required: ["connection_key", "path", "platform"],
+      },
+    },
+  },
+
+  // ─── Weather ──────────────────────────────────────────────────
   {
     type: "function",
     function: {
@@ -18,6 +120,8 @@ export const TOOL_DEFINITIONS = [
       },
     },
   },
+
+  // ─── Calculator ───────────────────────────────────────────────
   {
     type: "function",
     function: {
@@ -33,12 +137,14 @@ export const TOOL_DEFINITIONS = [
       },
     },
   },
+
+  // ─── Food Ordering (Demo) ────────────────────────────────────
   {
     type: "function",
     function: {
       name: "search_restaurants",
       description:
-        "Search for restaurants and their menus on delivery platforms (DoorDash, UberEats, etc.). Use this when the user wants to order food.",
+        "Search for restaurants and their menus on delivery platforms. Use this when the user wants to order food.",
       parameters: {
         type: "object",
         properties: {
@@ -80,12 +186,13 @@ export const TOOL_DEFINITIONS = [
       },
     },
   },
+
+  // ─── Travel (Demo) ───────────────────────────────────────────
   {
     type: "function",
     function: {
       name: "search_flights",
-      description:
-        "Search for flights between two cities. Returns available flights with prices and times.",
+      description: "Search for flights between two cities.",
       parameters: {
         type: "object",
         properties: {
@@ -104,8 +211,7 @@ export const TOOL_DEFINITIONS = [
     type: "function",
     function: {
       name: "search_hotels",
-      description:
-        "Search for hotels in a city. Returns available hotels with prices and ratings.",
+      description: "Search for hotels in a city.",
       parameters: {
         type: "object",
         properties: {
@@ -123,8 +229,7 @@ export const TOOL_DEFINITIONS = [
     type: "function",
     function: {
       name: "book_travel",
-      description:
-        "Book a flight or hotel. Requires prior search and user confirmation.",
+      description: "Book a flight or hotel. Requires prior search and user confirmation.",
       parameters: {
         type: "object",
         properties: {
@@ -137,12 +242,13 @@ export const TOOL_DEFINITIONS = [
       },
     },
   },
+
+  // ─── Calendar (Demo) ─────────────────────────────────────────
   {
     type: "function",
     function: {
       name: "create_calendar_event",
-      description:
-        "Create a calendar event. Use for scheduling meetings, reminders, and appointments.",
+      description: "Create a calendar event. Use for scheduling meetings, reminders, and appointments.",
       parameters: {
         type: "object",
         properties: {
@@ -173,16 +279,17 @@ export const TOOL_DEFINITIONS = [
       },
     },
   },
+
+  // ─── Meetings (Demo) ─────────────────────────────────────────
   {
     type: "function",
     function: {
       name: "join_meeting",
-      description:
-        "Join an online meeting (Zoom/Google Meet) to record, transcribe, and summarize.",
+      description: "Join an online meeting (Zoom/Google Meet) to record, transcribe, and summarize.",
       parameters: {
         type: "object",
         properties: {
-          meeting_url: { type: "string", description: "Meeting URL (Zoom or Google Meet link)" },
+          meeting_url: { type: "string", description: "Meeting URL" },
           action: { type: "string", enum: ["join_and_record", "get_transcript", "summarize"], description: "Action to take" },
         },
         required: ["meeting_url"],
@@ -203,17 +310,19 @@ export const TOOL_DEFINITIONS = [
       },
     },
   },
+
+  // ─── Email & Messaging (Demo) ────────────────────────────────
   {
     type: "function",
     function: {
       name: "send_email",
-      description: "Compose and send an email.",
+      description: "Compose and send an email (demo mode). For real Gmail, use pica_execute_action with Gmail connection.",
       parameters: {
         type: "object",
         properties: {
           to: { type: "string", description: "Recipient email address" },
           subject: { type: "string", description: "Email subject" },
-          body: { type: "string", description: "Email body (can include markdown)" },
+          body: { type: "string", description: "Email body" },
           cc: { type: "array", items: { type: "string" }, description: "CC recipients" },
         },
         required: ["to", "subject", "body"],
@@ -236,12 +345,13 @@ export const TOOL_DEFINITIONS = [
       },
     },
   },
+
+  // ─── Payments (Demo) ─────────────────────────────────────────
   {
     type: "function",
     function: {
       name: "process_payment",
-      description:
-        "Process a payment (demo/sandbox). Used after user confirms a purchase. Always confirm amount with user first.",
+      description: "Process a payment (demo/sandbox). Always confirm amount with user first.",
       parameters: {
         type: "object",
         properties: {
@@ -254,16 +364,17 @@ export const TOOL_DEFINITIONS = [
       },
     },
   },
+
+  // ─── Memory / Preferences ────────────────────────────────────
   {
     type: "function",
     function: {
       name: "save_preference",
-      description:
-        "Save a user preference for future reference (e.g., favorite restaurant, home address, preferred airline).",
+      description: "Save a user preference for future reference.",
       parameters: {
         type: "object",
         properties: {
-          key: { type: "string", description: "Preference key (e.g. 'home_address', 'favorite_airline', 'timezone')" },
+          key: { type: "string", description: "Preference key (e.g. 'home_address', 'favorite_airline')" },
           value: { type: "string", description: "Preference value" },
         },
         required: ["key", "value"],
@@ -278,7 +389,7 @@ export const TOOL_DEFINITIONS = [
       parameters: {
         type: "object",
         properties: {
-          keys: { type: "array", items: { type: "string" }, description: "Specific preference keys to retrieve. Omit for all." },
+          keys: { type: "array", items: { type: "string" }, description: "Specific preference keys. Omit for all." },
         },
       },
     },

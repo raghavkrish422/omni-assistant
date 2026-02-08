@@ -10,6 +10,7 @@ import { executeMeetingTool } from "./tools/meeting.ts";
 import { executeEmailTool } from "./tools/email.ts";
 import { executePaymentTool } from "./tools/payment.ts";
 import { executeMemoryTool } from "./tools/memory.ts";
+import { executePicaTool } from "./tools/pica.ts";
 import { TOOL_DEFINITIONS } from "./tools/registry.ts";
 
 const corsHeaders = {
@@ -47,6 +48,16 @@ You execute user requests end-to-end using available tools. You NEVER provide st
 5. **Concise Outputs**: Keep responses short, outcome-focused, and avoid unnecessary narration.
 6. **Use Tools Proactively**: For weather, calculations, scheduling, food orders, travel — always call the appropriate tool. Never guess or make up data.
 7. **Demo Mode**: Food ordering, travel booking, calendar, meetings, email, and payments operate in demo mode with realistic simulated data. This is transparent to the user for testing.
+
+## Pica Integration — Real Platform Access
+You have access to 200+ real third-party integrations via Pica tools. When a user asks to interact with a real platform (e.g., "check my Gmail", "schedule on Calendly", "design in Canva"), use the Pica tools in this workflow:
+
+1. **pica_list_connections** — Check which platforms the user has connected
+2. **pica_search_actions** — Find available API actions for the target platform
+3. **pica_get_action_knowledge** — Get the API details (parameters, path, method) BEFORE executing
+4. **pica_execute_action** — Execute the action using the connection key and API details
+
+**IMPORTANT**: Always prefer Pica tools for real platforms over demo tools. For example, if the user has Gmail connected, use pica_execute_action to actually read/send emails instead of the demo send_email tool.
 
 ## Response Formatting
 - Use markdown for structured responses (tables, lists, bold)
@@ -150,6 +161,11 @@ async function executeTool(
       case "save_preference":
       case "get_preferences":
         return await executeMemoryTool(name, args, userId);
+      case "pica_list_connections":
+      case "pica_search_actions":
+      case "pica_get_action_knowledge":
+      case "pica_execute_action":
+        return await executePicaTool(name, args);
       default:
         return JSON.stringify({ error: `Unknown tool: ${name}` });
     }
