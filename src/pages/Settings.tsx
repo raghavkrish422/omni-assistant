@@ -1,9 +1,10 @@
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, MessageCircle, LogOut, User } from "lucide-react";
+import { ArrowLeft, MessageCircle, LogOut, User, Plug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { MessagingConnections } from "@/components/settings/MessagingConnections";
+import { ConnectedIntegrations } from "@/components/settings/ConnectedIntegrations";
 import { Separator } from "@/components/ui/separator";
 
 export default function Settings() {
@@ -82,6 +83,22 @@ export default function Settings() {
             Connect your messaging apps to chat with Axiom from anywhere
           </p>
           <MessagingConnections />
+        </motion.section>
+
+        {/* Connected Integrations (Pica) */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <Plug className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-semibold text-foreground">Platform Integrations</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            Real API access to Gmail, Calendly, Slack, and 200+ platforms via Pica
+          </p>
+          <ConnectedIntegrations />
         </motion.section>
 
         <Separator />
